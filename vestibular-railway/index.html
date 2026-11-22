@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Вестибулярные упражнения: таймер</title>
+<style>
+:root{
+  --bg:#EAF1F0;--surface:#F8FBFA;--ink:#12303A;--muted:#52707A;--line:#C7D8D6;
+  --accent:#0E6E78;--accent-ink:#FFFFFF;--water:#BFE1E0;--rest:#B7791F;--ok:#2F7D4F;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1E24;--surface:#16292F;--ink:#E3EFEE;--muted:#93AEB3;--line:#294048;
+    --accent:#4FC1CB;--accent-ink:#06242A;--water:#1F4A52;--rest:#E0A94B;--ok:#6CC28A;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1E24;--surface:#16292F;--ink:#E3EFEE;--muted:#93AEB3;--line:#294048;
+  --accent:#4FC1CB;--accent-ink:#06242A;--water:#1F4A52;--rest:#E0A94B;--ok:#6CC28A;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Onest",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+main{max-width:640px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;line-height:1.2;margin:8px 0 4px;font-weight:700}
+.sub{margin:0 0 18px;color:var(--muted)}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs button{flex:1;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;font:inherit;font-weight:500;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.stage{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:22px;background:var(--surface);min-height:340px}
+.fill{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--water);transition:height .3s linear}
+.fill::before{content:"";position:absolute;left:-10%;right:-10%;top:-10px;height:20px;background:var(--water);border-radius:50%}
+.content{position:relative;padding:22px 20px 20px;text-align:center}
+.phase{margin:0;font-weight:500;color:var(--muted)}
+.phase.work{color:var(--accent)}
+.phase.rest{color:var(--rest)}
+h2{font-size:1.2rem;line-height:1.3;margin:6px 0 6px;font-weight:700}
+.how{margin:0 auto 6px;max-width:46ch;color:var(--ink)}
+.clock{font-size:4.5rem;line-height:1.1;font-weight:700;font-variant-numeric:tabular-nums;margin:10px 0 2px}
+.setinfo{margin:0 0 14px;color:var(--muted)}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{padding:12px 20px;border-radius:14px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.panel{margin-top:16px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.panel h3{margin:0 0 10px;font-size:1rem}
+.stepper{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0}
+.stepper .ctl{display:flex;align-items:center;gap:10px}
+.stepper button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-size:1.2rem;cursor:pointer}
+.stepper output{min-width:3.5ch;text-align:center;font-variant-numeric:tabular-nums;font-weight:700}
+ol{list-style:none;margin:0;padding:0}
+li button.item{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:12px 4px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;cursor:pointer}
+li:last-child button.item{border-bottom:0}
+.mark{flex:0 0 26px;height:26px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:.9rem;color:transparent}
+li.done .mark{background:var(--ok);border-color:var(--ok);color:#fff}
+li.current .name{font-weight:700;color:var(--accent)}
+.meta{display:block;color:var(--muted);font-size:.85rem}
+.progress{margin:0 0 8px;color:var(--muted);font-size:.95rem}
+textarea{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font:inherit;resize:vertical}
+.safety{margin-top:16px;color:var(--muted);font-size:.9rem}
+@media (prefers-reduced-motion:reduce){.fill{transition:none}}
+[hidden]{display:none!important}.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}.cal button,.nav button{border:1px solid var(--line);border-radius:9px;color:var(--ink);background:var(--bg);font:inherit;cursor:pointer}.cal button{min-height:48px;padding:2px}.cal small{display:block;font-size:.72rem}.cal .full{color:white;background:#277045}.cal .part{background:#f5d895;color:#452e0a}.cal [aria-pressed=true]{outline:2px solid var(--accent)}.nav{display:flex;align-items:center;justify-content:space-between;margin:10px 0}.nav button{padding:8px 14px}.sub,#detail{white-space:pre-line}.stage .row{flex-wrap:wrap}
+</style>
+</head>
+<body>
+<main>
+  <h1>Вестибулярные упражнения</h1>
+  <p class="sub">Выберите этап на сегодня.</p>
+
+  <div class="tabs" role="tablist" aria-label="Программа">
+    <button role="tab" id="tab172" aria-selected="true" data-prog="172">172, этап 3</button>
+    <button role="tab" id="tab171" aria-selected="false" data-prog="171">171, этап 4</button>
+  </div>
+
+  <p id="storageWarning" role="alert" hidden>Браузер не разрешил сохранить занятие. При закрытии страницы прогресс может потеряться.</p><section class="stage">
+    <div class="fill" id="fill"></div>
+    <div class="content">
+      <p class="phase" id="phase"></p>
+      <h2 id="exName"></h2>
+      <p class="how" id="exHow"></p>
+      <div class="clock" id="clock">0:30</div>
+      <p class="setinfo" id="setInfo"></p>
+      <div class="row">
+        <button class="btn" id="main"></button>
+        <button class="btn ghost" id="skip" hidden></button>
+      </div><button class="btn ghost" id="audio" type="button">Восстановить звук</button><div id="audioInfo" role="status"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>Время</h3>
+    <div class="stepper"><span>Подход, сек</span><span class="ctl"><button id="wMinus" aria-label="Меньше">−</button><output id="wVal"></output><button id="wPlus" aria-label="Больше">+</button></span></div>
+    <div class="stepper"><span>Отдых, сек</span><span class="ctl"><button id="rMinus" aria-label="Меньше">−</button><output id="rVal"></output><button id="rPlus" aria-label="Больше">+</button></span></div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost" id="testSound">Проверить звук</button></div>
+  </section>
+
+  <section class="panel">
+    <h3>Сегодня</h3>
+    <p class="progress" id="progress"></p>
+    <ol id="list"></ol>
+  </section>
+
+  <section class="panel">
+    <h3>Дневник занятий</h3><div class="nav"><button id="prev" aria-label="Предыдущий месяц">‹</button><strong id="month"></strong><button id="next" aria-label="Следующий месяц">›</button></div><div class="cal" id="calendar"></div><p id="detail"></p></section><section class="panel"><h3>Заметка за сегодня</h3>
+    <textarea id="note" placeholder="Что делали, как переносили, что было легче или тяжелее"></textarea>
+  </section>
+
+  <p class="safety">Упражнения с закрытыми глазами и на одной ноге делайте рядом со стулом или стеной. Если становится сильно плохо или головокружение долго не проходит, остановитесь. Это помощник для вашей программы, а не назначение: сколько раз в день заниматься и когда переходить к следующему этапу, решает врач.</p>
+</main>
+
+<script>
+(function(){
+  var PROGRAMS = {
+    "172": [
+      {n:"Взгляд на пальце: голова вправо-влево", h:"Стоя, рука вытянута, большой палец вверх. Смотрите на палец и поворачивайте голову из стороны в сторону.", w:30},
+      {n:"Взгляд на пальце: голова вверх-вниз", h:"То же, но голова наклоняется вниз и поднимается вверх, взгляд на пальце.", w:30},
+      {n:"Восьмёрка", h:"Смотрите на большой палец и рисуйте им в воздухе цифру 8, не отрывая взгляд.", w:30},
+      {n:"Мяч из руки в руку, сидя", h:"Сядьте на стул, смотрите на мяч и перебрасывайте его из руки в руку. При головокружении делайте паузы.", w:30},
+      {n:"Наклоны за предметами", h:"Наклонитесь, возьмите предмет с пола, выпрямитесь и подождите, пока пройдёт головокружение. Потом поставьте предмет обратно.", w:30},
+      {n:"Стойка с закрытыми глазами, ноги вместе", h:"Рядом стул. Закройте глаза и стойте, сколько получается.", w:60},
+      {n:"Тандемная стойка с закрытыми глазами", h:"Одна нога впереди другой по прямой, пятка к носку. Рядом стул, вес поровну на обе ноги.", w:60}
+    ],
+    "171": [
+      {n:"Палец: рука и голова в разные стороны, по горизонтали", h:"Рука идёт вправо, голова влево, потом наоборот. Взгляд всё время на пальце.", w:30},
+      {n:"Палец: рука и голова в разные стороны, по вертикали", h:"Рука вверх, голова вниз, и обратно. Взгляд на пальце.", w:30},
+      {n:"Подбрасывание мяча вверх и вниз", h:"Стоя, бросайте мяч вверх и ловите, не отводя взгляд от мяча.", w:30},
+      {n:"Мяч из руки в руку, стоя", h:"Смотрите на мяч и перебрасывайте его из руки в руку. При головокружении делайте паузы.", w:30},
+      {n:"Вращение зонта", h:"Держите зонт обеими руками, вращайте ручку и удерживайте взгляд на узоре как можно дольше.", w:30},
+      {n:"Стойка на одной ноге с мячом", h:"Бросайте мяч на пол так, чтобы он отскочил в руки. Если сложно, ловите одной рукой.", w:60},
+      {n:"Повороты головы с закрытыми глазами", h:"Ноги на ширине плеч, рядом стул. Медленно поворачивайте голову из стороны в сторону.", w:60}
+    ]
+  };
+
+  const $ = id => document.getElementById(id);
+  const stamp = d => [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+  const dayKey = () => stamp(new Date());
+  function get(k, fallback) {
+    try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; }
+  }
+  function put(k,v) {
+    try { localStorage.setItem(k,JSON.stringify(v)); } catch { $('storageWarning').hidden=false; }
+  }
+  function readDay(date) {
+    const saved=get('journal-v1-'+date,null);
+    if(saved) return saved;
+    const old=get('vestib-done-'+date,{});
+    const stage=Object.keys(PROGRAMS).find(p=>old[p]?.length);
+    if(!stage) return null;
+    return {stage, logged:true, sessions:Object.fromEntries(Object.entries(old).map(([p,done])=>[p,{...fresh(),done}]))};
+  }
+  function fresh(){return {idx:0,set:1,phase:'idle',running:false,end:0,left:0,total:0,done:[]};}
+  let date=dayKey(), day=readDay(date) || {stage:get('last-stage','172'),sessions:{}};
+  let selected=date, month=new Date(date+'T12:00:00'); month.setDate(1);
+  let st, items;
+  function bind(){ items=PROGRAMS[day.stage]; st=day.sessions[day.stage] ||= fresh(); }
+  bind();
+  const cfg=get('vestib-cfg2',{rest:60,work:{'171':Array(7).fill(60),'172':Array(7).fill(60)}});
+  const work=()=>cfg.work[day.stage][st.idx];
+  function save(){ put('journal-v1-'+date,day); }
+  function left(){return st.running?Math.max(0,(st.end-Date.now())/1000):st.left;}
+  function clock(){
+    const sec=st.phase==='idle'?work():Math.ceil(left());
+    $('clock').textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+    const fraction=st.total?Math.min(1,left()/st.total):0;
+    $('fill').style.height=(st.phase==='idle'?0:100*(st.phase==='work'?1-fraction:fraction))+'%';
+  }
+  function render(){
+    const idle=st.phase==='idle', complete=idle&&st.done.length===items.length;
+    $('exName').textContent=complete?'Этап пройден':items[st.idx].n;
+    $('exHow').textContent=complete?'Все упражнения за сегодня отмечены в дневнике.':items[st.idx].h;
+    $('phase').textContent=complete?'Готово':idle?'Следующий подход':st.phase==='work'?'Подход':'Отдых';
+    $('phase').className='phase '+st.phase;
+    $('setInfo').textContent='Подход '+st.set+' из 3';
+    for(const id of ['main','clock','setInfo']) $(id).hidden=complete;
+    $('main').textContent=idle?'Начать подход':st.running?'Пауза':'Продолжить';
+    $('skip').hidden=idle;
+    $('skip').textContent=st.phase==='work'?'Закончить подход':'Пропустить отдых';
+    $('wVal').textContent=work(); $('rVal').textContent=cfg.rest;
+    $('progress').textContent='Сделано '+st.done.length+' из '+items.length;
+    for(const p of Object.keys(PROGRAMS)) $('tab'+p).setAttribute('aria-selected',String(day.stage===p));
+    $('list').replaceChildren(...items.map((ex,i)=>{
+      const li=document.createElement('li'), b=document.createElement('button');
+      li.className=(st.done.includes(i)?'done ':'')+(i===st.idx?'current':'');
+      b.className='item'; b.innerHTML='<span class="mark">✓</span><span><span class="name"></span><span class="meta"></span></span>';
+      b.querySelector('.name').textContent=ex.n;
+      b.querySelector('.meta').textContent='3 подхода по '+cfg.work[day.stage][i]+' сек';
+      b.onclick=()=>{if(i===st.idx||st.done.includes(i))return;
+        if((st.phase!=='idle'||st.set>1)&&!confirm('Перейти к другому упражнению и сбросить подходы текущего?'))return;
+        Object.assign(st,fresh(),{idx:i,done:st.done});changed();};
+      li.append(b);return li;
+    }));clock();calendar();
+  }
+  const label=p=>p==='172'?'Этап 3':'Этап 4';
+  function calendar(){
+    const root=$('calendar');root.replaceChildren(); $('month').textContent=month.toLocaleString('ru',{month:'long',year:'numeric'});
+    $('next').disabled=stamp(month).slice(0,7)>=date.slice(0,7);
+    for(const h of ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']){const el=document.createElement('small');el.textContent=h;root.append(el);}
+    for(let i=0;i<(month.getDay()+6)%7;i++)root.append(document.createElement('span'));
+    const d=new Date(month);
+    while(d.getMonth()===month.getMonth()){
+      const k=stamp(d), record=k===date?day:readDay(k), b=document.createElement('button');
+      const n=record?.sessions[record.stage]?.done.length||0, total=record?PROGRAMS[record.stage].length:0;
+      b.textContent=d.getDate();b.disabled=k>date;b.setAttribute('aria-pressed',String(selected===k));
+      if(record?.logged){const t=document.createElement('small');t.textContent=n===total?'✓':n+'/'+total;b.append(t);b.className=n===total?'full':'part';}
+      b.onclick=()=>{selected=k;calendar();};root.append(b);d.setDate(d.getDate()+1);
+    }
+    const r=selected===date?day:readDay(selected);
+    const note=selected===date?$('note').value:r?.note;
+    $('detail').textContent=new Date(selected+'T12:00:00').toLocaleDateString('ru',{day:'numeric',month:'long'})+' · '+(r?.logged?label(r.stage)+' · '+(r.sessions[r.stage]?.done.length||0)+' из '+PROGRAMS[r.stage].length:'Нет занятия')+(note?'\n'+note:'');
+  }
+  for(const [id,step] of [['prev',-1],['next',1]])$(id).onclick=()=>{month.setMonth(month.getMonth()+step);selected=month.getMonth()===new Date().getMonth()&&month.getFullYear()===new Date().getFullYear()?date:stamp(month);calendar();};
+  let ctx, wake, requesting=false;
+  async function sound(kind,rebuild=false){
+    try{
+      if(rebuild && ctx){ctx.close().catch(()=>{});ctx=null;}
+      ctx ||= new (window.AudioContext||window.webkitAudioContext)();
+      const audio=ctx;
+      if(audio.state!=='running')await audio.resume();
+      if(audio!==ctx||audio.state!=='running')throw Error();
+      const notes=kind==='start'?[650]:kind==='finish'?[660,880,1100]:[880,880];
+      notes.forEach((f,i)=>{const osc=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime+i*.38;
+        osc.frequency.value=f;osc.connect(g);g.connect(audio.destination);
+        g.gain.setValueAtTime(.001,t);g.gain.exponentialRampToValueAtTime(.5,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.28);
+        osc.start(t);osc.stop(t+.3);});$('audioInfo').textContent='';
+    }catch{$('audioInfo').textContent='Нажмите «Восстановить звук» и проверьте сигнал.';}
+  }
+  $('audio').onclick=()=>sound('finish',true);$('testSound').onclick=()=>sound('step');
+  async function screen(){
+    if(!st.running||document.hidden){if(wake)await wake.release().catch(()=>{});return;}
+    if(wake||requesting||!navigator.wakeLock)return;
+    requesting=true;
+    try{const lock=await navigator.wakeLock.request('screen');wake=lock;
+      lock.onrelease=()=>{if(wake===lock)wake=null;};if(!st.running||document.hidden)await lock.release();
+    }catch{}finally{requesting=false;}
+  }
+  function changed(){save();render();screen();}
+  function begin(phase,sec,at){Object.assign(st,{phase,running:true,total:sec,left:sec,end:at+sec*1000});}
+  function advance(at){
+    if(st.phase==='work'&&st.set<3){begin('rest',cfg.rest,at);return;}
+    if(st.phase==='rest'){st.set++;}else{
+      if(!st.done.includes(st.idx))st.done.push(st.idx);
+      const next=items.findIndex((_,i)=>!st.done.includes(i)&&i>st.idx);
+      st.idx=next>=0?next:Math.max(0,items.findIndex((_,i)=>!st.done.includes(i)));st.set=1;
+    }
+    Object.assign(st,{phase:'idle',running:false,end:0,total:0,left:0});
+  }
+  function tick(audible=true){
+    if(st.running&&Date.now()>=st.end){
+      const finish=st.phase==='work'&&st.set===3;
+      do{advance(st.end);}while(st.running&&Date.now()>=st.end);
+      if(audible)sound(finish?'finish':'step');changed();
+    }else if(st.running)clock();
+    if(dayKey()!==date&&!st.running&&st.phase==='idle'&&st.set===1)location.reload();
+  }
+  $('main').onclick=()=>{
+    tick(false);if(st.done.length===items.length)return;
+    if(st.running){st.left=left();st.running=false;}
+    else{sound('start');day.logged=true;
+      if(st.phase==='idle')begin('work',work(),Date.now());else{st.end=Date.now()+st.left*1000;st.running=true;}}
+    changed();
+  };
+  $('skip').onclick=()=>{if(st.phase!=='idle'){advance(Date.now());changed();}};
+  for(const p of Object.keys(PROGRAMS))$('tab'+p).onclick=()=>{
+    if(p===day.stage)return;
+    if(st.running){st.left=left();st.running=false;}
+    day.stage=p;put('last-stage',p);bind();changed();
+  };
+  for(const [id,delta] of [['wMinus',-10],['wPlus',10],['rMinus',-15],['rPlus',15]])$(id).onclick=()=>{
+    if(id[0]==='w')cfg.work[day.stage][st.idx]=Math.max(10,Math.min(180,work()+delta));
+    else cfg.rest=Math.max(15,Math.min(180,cfg.rest+delta));
+    put('vestib-cfg2',cfg);render();
+  };
+  $('note').value=day.note||'';$('note').oninput=()=>{day.note=$('note').value;save();calendar();};
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick(false);if(ctx&&ctx.state!=='running')ctx.resume().catch(()=>{});}screen();});
+  tick(false);render();screen();setInterval(tick,250);
+})();
+</script><script>
+if(location.protocol==='https:' && 'serviceWorker' in navigator){
+  navigator.serviceWorker.register('./offline.js').catch(()=>{});
+}
+</script></body></html>
