@@ -176,7 +176,7 @@ textarea{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--lin
     const idle=st.phase==='idle', complete=idle&&st.done.length===items.length;
     $('exName').textContent=complete?'Этап пройден':items[st.idx].n;
     $('exHow').textContent=complete?'Все упражнения за сегодня отмечены в дневнике.':items[st.idx].h;
-    $('phase').textContent=complete?'Готово':idle?'Следующий подход':st.phase==='work'?'Подход':'Отдых';
+    $('phase').textContent=complete?'Готово':idle?(st.set===1?'Готовы?':'Следующий подход'):st.phase==='work'?'Подход':st.phase==='between'?'Отдых перед упражнением':'Отдых';
     $('phase').className='phase '+st.phase;
     $('setInfo').textContent='Подход '+st.set+' из 3';
     for(const id of ['main','clock','setInfo']) $(id).hidden=complete;
@@ -245,10 +245,14 @@ textarea{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--lin
   function begin(phase,sec,at){Object.assign(st,{phase,running:true,total:sec,left:sec,end:at+sec*1000});}
   function advance(at){
     if(st.phase==='work'&&st.set<3){begin('rest',cfg.rest,at);return;}
-    if(st.phase==='rest'){st.set++;}else{
+    if(st.phase==='rest'){st.set++;}else if(st.phase==='work'){
       if(!st.done.includes(st.idx))st.done.push(st.idx);
       const next=items.findIndex((_,i)=>!st.done.includes(i)&&i>st.idx);
       st.idx=next>=0?next:Math.max(0,items.findIndex((_,i)=>!st.done.includes(i)));st.set=1;
+      if(st.done.length < items.length){
+        begin('between',cfg.rest,at);
+        return;
+      }
     }
     Object.assign(st,{phase:'idle',running:false,end:0,total:0,left:0});
   }
