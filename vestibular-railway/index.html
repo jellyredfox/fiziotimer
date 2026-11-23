@@ -73,7 +73,7 @@ textarea{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--lin
 <body>
 <main>
   <h1>Вестибулярные упражнения</h1>
-  <p class="sub">Выберите этап на сегодня.</p>
+  <p class="sub"><label>Дата занятия <select id="sessionDate"></select></label></p>
 
   <div class="tabs" role="tablist" aria-label="Программа">
     <button role="tab" id="tab172" aria-selected="true" data-prog="172">172, этап 3</button>
@@ -103,13 +103,13 @@ textarea{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--lin
   </section>
 
   <section class="panel">
-    <h3>Сегодня</h3>
+    <h3>Упражнения</h3>
     <p class="progress" id="progress"></p>
     <ol id="list"></ol>
   </section>
 
   <section class="panel">
-    <h3>Дневник занятий</h3><div class="nav"><button id="prev" aria-label="Предыдущий месяц">‹</button><strong id="month"></strong><button id="next" aria-label="Следующий месяц">›</button></div><div class="cal" id="calendar"></div><p id="detail"></p></section><section class="panel"><h3>Заметка за сегодня</h3>
+    <h3>Дневник занятий</h3><div class="nav"><button id="prev" aria-label="Предыдущий месяц">‹</button><strong id="month"></strong><button id="next" aria-label="Следующий месяц">›</button></div><div class="cal" id="calendar"></div><p id="detail"></p></section><section class="panel"><h3>Заметка за день занятия</h3>
     <textarea id="note" placeholder="Что делали, как переносили, что было легче или тяжелее"></textarea>
   </section>
 
@@ -157,7 +157,12 @@ textarea{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--lin
     return {stage, logged:true, sessions:Object.fromEntries(Object.entries(old).map(([p,done])=>[p,{...fresh(),done}]))};
   }
   function fresh(){return {idx:0,set:1,phase:'idle',running:false,end:0,left:0,total:0,done:[]};}
-  let date=dayKey(), day=readDay(date) || {stage:get('last-stage','172'),sessions:{}};
+  function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return stamp(d);}
+  const last=get('practice-date',null);
+  const previous=readDay(yesterday());
+  const previousSession=previous?.sessions[previous.stage];
+  const resumeYesterday=last?.date===yesterday() && (last.chosen===dayKey() || (previous?.logged && previousSession?.done.length<PROGRAMS[previous.stage].length));
+  let date=resumeYesterday?yesterday():dayKey(), day=readDay(date) || {stage:get('last-stage','172'),sessions:{}};
   let selected=date, month=new Date(date+'T12:00:00'); month.setDate(1);
   let st, items;
   function bind(){ items=PROGRAMS[day.stage]; st=day.sessions[day.stage] ||= fresh(); }
@@ -172,19 +177,36 @@ textarea{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--lin
     const fraction=st.total?Math.min(1,left()/st.total):0;
     $('fill').style.height=(st.phase==='idle'?0:100*(st.phase==='work'?1-fraction:fraction))+'%';
   }
+  function showDates(){
+    const dates=[...new Set([dayKey(),yesterday(),date])];
+    $('sessionDate').replaceChildren(...dates.map(k=>{
+      const o=document.createElement('option');o.value=k;
+      o.textContent=(k===dayKey()?'Сегодня, ':k===yesterday()?'Вчера, ':'')+new Date(k+'T12:00:00').toLocaleDateString('ru');
+      return o;
+    }));
+    $('sessionDate').value=date;
+  }
+  $('sessionDate').onchange=()=>{
+    const target=$('sessionDate').value;
+    if(st.running){st.left=left();st.running=false;save();}
+    date=target; selected=date; month=new Date(date+'T12:00:00');month.setDate(1);
+    day=readDay(date)||{stage:get('last-stage','172'),sessions:{}};
+    bind();$('note').value=day.note||'';put('practice-date',{date,chosen:dayKey()});tick(false);render();screen();
+  };
   function render(){
+    showDates();
     const idle=st.phase==='idle', complete=idle&&st.done.length===items.length;
     $('exName').textContent=complete?'Этап пройден':items[st.idx].n;
-    $('exHow').textContent=complete?'Все упражнения за сегодня отмечены в дневнике.':items[st.idx].h;
+    $('exHow').textContent=complete?'Все упражнения за выбранный день отмечены в дневнике.':items[st.idx].h;
     $('phase').textContent=complete?'Готово':idle?(st.set===1?'Готовы?':'Следующий подход'):st.phase==='work'?'Подход':st.phase==='between'?'Отдых перед упражнением':'Отдых';
     $('phase').className='phase '+st.phase;
     $('setInfo').textContent='Подход '+st.set+' из 3';
-    for(const id of ['main','clock','setInfo']) $(id).hidden=complete;
-    $('main').textContent=idle?'Начать подход':st.running?'Пауза':'Продолжить';
+    for(const id of ['clock','setInfo']) $(id).hidden=complete;
+    $('main').textContent=complete?'Пройти ещё раз':idle?'Начать подход':st.running?'Пауза':'Продолжить';
     $('skip').hidden=idle;
     $('skip').textContent=st.phase==='work'?'Закончить подход':'Пропустить отдых';
     $('wVal').textContent=work(); $('rVal').textContent=cfg.rest;
-    $('progress').textContent='Сделано '+st.done.length+' из '+items.length;
+    $('progress').textContent=(st.repeat?'В повторе ':'Сделано ')+st.done.length+' из '+items.length;
     for(const p of Object.keys(PROGRAMS)) $('tab'+p).setAttribute('aria-selected',String(day.stage===p));
     $('list').replaceChildren(...items.map((ex,i)=>{
       const li=document.createElement('li'), b=document.createElement('button');
@@ -201,20 +223,20 @@ textarea{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--lin
   const label=p=>p==='172'?'Этап 3':'Этап 4';
   function calendar(){
     const root=$('calendar');root.replaceChildren(); $('month').textContent=month.toLocaleString('ru',{month:'long',year:'numeric'});
-    $('next').disabled=stamp(month).slice(0,7)>=date.slice(0,7);
+    $('next').disabled=stamp(month).slice(0,7)>=dayKey().slice(0,7);
     for(const h of ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']){const el=document.createElement('small');el.textContent=h;root.append(el);}
     for(let i=0;i<(month.getDay()+6)%7;i++)root.append(document.createElement('span'));
     const d=new Date(month);
     while(d.getMonth()===month.getMonth()){
       const k=stamp(d), record=k===date?day:readDay(k), b=document.createElement('button');
-      const n=record?.sessions[record.stage]?.done.length||0, total=record?PROGRAMS[record.stage].length:0;
-      b.textContent=d.getDate();b.disabled=k>date;b.setAttribute('aria-pressed',String(selected===k));
+      const n=record?.sessions[record.stage]?.repeat?PROGRAMS[record.stage].length:record?.sessions[record.stage]?.done.length||0, total=record?PROGRAMS[record.stage].length:0;
+      b.textContent=d.getDate();b.disabled=k>dayKey();b.setAttribute('aria-pressed',String(selected===k));
       if(record?.logged){const t=document.createElement('small');t.textContent=n===total?'✓':n+'/'+total;b.append(t);b.className=n===total?'full':'part';}
       b.onclick=()=>{selected=k;calendar();};root.append(b);d.setDate(d.getDate()+1);
     }
     const r=selected===date?day:readDay(selected);
     const note=selected===date?$('note').value:r?.note;
-    $('detail').textContent=new Date(selected+'T12:00:00').toLocaleDateString('ru',{day:'numeric',month:'long'})+' · '+(r?.logged?label(r.stage)+' · '+(r.sessions[r.stage]?.done.length||0)+' из '+PROGRAMS[r.stage].length:'Нет занятия')+(note?'\n'+note:'');
+    $('detail').textContent=new Date(selected+'T12:00:00').toLocaleDateString('ru',{day:'numeric',month:'long'})+' · '+(r?.logged?label(r.stage)+' · '+(r.sessions[r.stage]?.repeat?PROGRAMS[r.stage].length:r.sessions[r.stage]?.done.length||0)+' из '+PROGRAMS[r.stage].length:'Нет занятия')+(note?'\n'+note:'');
   }
   for(const [id,step] of [['prev',-1],['next',1]])$(id).onclick=()=>{month.setMonth(month.getMonth()+step);selected=month.getMonth()===new Date().getMonth()&&month.getFullYear()===new Date().getFullYear()?date:stamp(month);calendar();};
   let ctx, wake, requesting=false;
@@ -256,16 +278,19 @@ textarea{width:100%;min-height:84px;padding:10px 12px;border:1px solid var(--lin
     }
     Object.assign(st,{phase:'idle',running:false,end:0,total:0,left:0});
   }
+  let displayedToday=dayKey();
   function tick(audible=true){
     if(st.running&&Date.now()>=st.end){
       const finish=st.phase==='work'&&st.set===3;
       do{advance(st.end);}while(st.running&&Date.now()>=st.end);
       if(audible)sound(finish?'finish':'step');changed();
     }else if(st.running)clock();
-    if(dayKey()!==date&&!st.running&&st.phase==='idle'&&st.set===1)location.reload();
+    if(dayKey()!==displayedToday){displayedToday=dayKey();render();}
   }
   $('main').onclick=()=>{
-    tick(false);if(st.done.length===items.length)return;
+    tick(false);
+    if(st.done.length===items.length){Object.assign(st,fresh(),{repeat:true});}
+    put('practice-date',{date,chosen:dayKey()});
     if(st.running){st.left=left();st.running=false;}
     else{sound('start');day.logged=true;
       if(st.phase==='idle')begin('work',work(),Date.now());else{st.end=Date.now()+st.left*1000;st.running=true;}}
